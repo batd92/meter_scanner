@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OCR Services</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .service-links {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .service-link {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            color: #333;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+        .service-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        .service-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .service-desc {
+            color: #666;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>OCR Services</h1>
+        <p>Choose your OCR service:</p>
+    </div>
+    
+    <div class="service-links">
+        <a href="/basic-ocr" class="service-link">
+            <div class="service-title">📝 Basic OCR</div>
+            <div class="service-desc">Simple text recognition from images</div>
+        </a>
+        
+        <a href="/yolo-ocr" class="service-link">
+            <div class="service-title">🎯 YOLO + OCR</div>
+            <div class="service-desc">Object detection + text recognition</div>
+        </a>
+        
+        <a href="/webui" class="service-link">
+            <div class="service-title">🌐 Web UI</div>
+            <div class="service-desc">File upload and batch processing</div>
+        </a>
+    </div>
+</body>
+</html> 

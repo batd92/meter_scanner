@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>YOLO + OCR Pipeline</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body, html {
+            height: 100%;
+            font-family: sans-serif;
+            background-color: #ffffff;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 5px 20px 20px 20px;
+        }
+
+        .drop-zone {
+            border: 2px dashed #888;
+            border-radius: 10px;
+            width: 400px;
+            height: 150px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            color: #555;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            margin-bottom: 20px;
+        }
+
+        .drop-zone.dragover {
+            background-color: #f0f0f0;
+        }
+
+        .results-container {
+            display: none;
+            width: 100%;
+            max-width: 1400px;
+            gap: 30px;
+            margin-top: 20px;
+        }
+
+        .image-panel {
+            flex: 1;
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e0e0e0;
+            min-height: 500px;
+        }
+
+        .results-panel {
+            flex: 1;
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e0e0e0;
+            min-height: 500px;
+            overflow-y: auto;
+        }
+
+        .panel h3 {
+            margin-top: 0;
+            color: #333;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+            font-size: 1.3em;
+            font-weight: 600;
+        }
+
+        .processing-info {
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+            padding: 18px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            border: 1px solid #90caf9;
+        }
+
+        .text-result {
+            background: #f8f9fa;
+            padding: 15px;
+            margin: 8px 0;
+            border-radius: 8px;
+            border-left: 4px solid #4caf50;
+            font-size: 15px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .confidence {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        .spinner {
+            width: 30px;
+            height: 30px;
+            border: 3px solid #ccc;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+
+        .image-container {
+            text-align: center;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .image-container img {
+            max-width: 100%;
+            max-height: 400px;
+            height: auto;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin: 0 auto;
+        }
+
+        .image-placeholder {
+            color: #999;
+            font-size: 16px;
+            margin: 20px 0;
+        }
+
+        /* Loading overlay */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            display: none;
+        }
+
+        .spinner-large {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #ccc;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        /* Responsive design */
+        @media (max-width: 1200px) {
+            .results-container {
+                flex-direction: column;
+            }
+            
+            .image-panel, .results-panel {
+                min-height: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>YOLO + OCR Pipeline</h2>
+    <br>
+    <div id="dropZone" class="drop-zone">
+        Click or drag image here to upload<br>
+    </div>
+
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="spinner-large"></div>
+    </div>
+
+    <div id="resultsContainer" class="results-container">
+        <div class="image-panel">
+            <div id="imageContainer" class="image-container">
+                <div class="image-placeholder">
+                    Upload an image to see YOLO detections
+                </div>
+            </div>
+        </div>
+        
+        <div class="results-panel">
+            <div id="yoloOcrResults">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Processing with YOLO + OCR...
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentImage = null;
+
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'image/*';
+
+    const resultsContainer = document.getElementById('resultsContainer');
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    const imageContainer = document.getElementById('imageContainer');
+
+    dropZone.addEventListener('click', () => {
+        fileInput.click();
+    });
+
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('dragover');
+    });
+
+    dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('dragover');
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+        const file = e.dataTransfer.files[0];
+        if (file && file.type.startsWith('image/')) {
+            handleImage(file);
+        } else {
+            alert("Please upload an image file");
+        }
+    });
+
+    fileInput.addEventListener('change', () => {
+        const file = fileInput.files[0];
+        if (file) {
+            handleImage(file);
+        }
+    });
+
+    function handleImage(file) {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            currentImage = e.target.result;
+            
+            imageContainer.innerHTML = `
+                <h4>Original Image</h4>
+                <img src="${currentImage}" alt="Original image">
+            `;
+            
+            resultsContainer.style.display = "flex";
+            loadingOverlay.style.display = "flex";
+            
+            const base64Image = e.target.result.split(',')[1];
+            
+            processYoloOcr(base64Image);
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function processYoloOcr(base64Image) {
+        const resultsDiv = document.getElementById('yoloOcrResults');
+        resultsDiv.innerHTML = '<div class="loading"><div class="spinner"></div>Processing with YOLO + OCR...</div>';
+
+        fetch('/api/yolo_ocr', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                image: base64Image
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            loadingOverlay.style.display = "none";
+            
+            if (!data.success) {
+                resultsDiv.innerHTML = `<div class="error">Error: ${data.error || 'Unknown error occurred'}</div>`;
+                return;
+            }
+            
+            displayYoloOcrResults(data);
+        })
+        .catch(error => {
+            loadingOverlay.style.display = "none";
+            resultsDiv.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+            console.error('YOLO OCR Error:', error);
+        });
+    }
+
+    function displayYoloOcrResults(data) {
+        const resultsDiv = document.getElementById('yoloOcrResults');
+        
+        if (data.processing_time && typeof data.processing_time === 'number') {
+            let html = `
+                <div class="processing-info">
+                    <strong>Processing Time:</strong><br>
+                    Total: ${data.processing_time.toFixed(3)}s<br>
+                    YOLO Detection: ${data.yolo_time ? data.yolo_time.toFixed(3) : 'N/A'}s<br>
+                    OCR Processing: ${data.ocr_time ? data.ocr_time.toFixed(3) : 'N/A'}s<br>
+                    <strong>YOLO Detections:</strong> ${data.detections || 0}<br>
+                    <strong>Total Texts:</strong> ${data.total_texts || 0}
+                </div>
+            `;
+
+            if (data.performance) {
+                html += `
+                    <div class="processing-info" style="background: linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%); border-color: #4caf50;">
+                        <strong>Performance Metrics:</strong><br>
+                        Avg CPU: ${data.performance.avg_cpu ? data.performance.avg_cpu.toFixed(1) : 'N/A'}%<br>
+                        Avg Memory: ${data.performance.avg_memory ? data.performance.avg_memory.toFixed(1) : 'N/A'}%<br>
+                        ${data.performance.recommendations && data.performance.recommendations.length > 0 ? 
+                            '<strong>Recommendations:</strong><br>' + data.performance.recommendations.join('<br>') : ''}
+                    </div>
+                `;
+            }
+
+            if (data.image_with_bboxes) {
+                imageContainer.innerHTML = `
+                    <img src="data:image/jpeg;base64,${data.image_with_bboxes}" 
+                         alt="Image with YOLO bounding boxes">
+                `;
+            }
+
+            if (!data.regions || data.regions.length === 0) {
+                html += '<div class="text-result">No text regions detected</div>';
+            } else {
+                data.regions.forEach((region, index) => {
+                    html += `
+                        <div class="text-result">
+                            <strong>Region ${region.region_id + 1}</strong> 
+                            (YOLO conf: ${(region.confidence * 100).toFixed(1)}%)<br>
+                            <small>BBox: [${region.bbox.join(', ')}]</small>
+                            ${region.error ? `<br><small style="color: #f44336;">Error: ${region.error}</small>` : ''}
+                        </div>
+                    `;
+                    
+                    if (!region.texts || region.texts.length === 0) {
+                        html += '<div class="text-result" style="margin-left: 20px; color: #666;">No text found in this region</div>';
+                    } else {
+                        region.texts.forEach(text => {
+                            html += `
+                                <div class="text-result" style="margin-left: 20px;">
+                                    "${text.text}" 
+                                    <span class="confidence">(${(text.confidence * 100).toFixed(1)}%)</span>
+                                </div>
+                            `;
+                        });
+                    }
+                });
+            }
+            
+            resultsDiv.innerHTML = html;
+            return;
+        }
+        
+        // Fallback to old format for backward compatibility
+        if (!data.processing_time || !data.processing_time.total) {
+            resultsDiv.innerHTML = `<div class="error">Error: Invalid response format</div>`;
+            return;
+        }
+        
+        let html = `
+            <div class="processing-info">
+                <strong>Processing Time:</strong><br>
+                Total: ${data.processing_time.total.toFixed(3)}s<br>
+                YOLO Detection: ${data.processing_time.yolo_detection.toFixed(3)}s<br>
+                OCR Recognition: ${data.processing_time.ocr_recognition.toFixed(3)}s<br>
+                <strong>YOLO Detections:</strong> ${data.yolo_detections || 0}
+            </div>
+        `;
+
+        // Update image with bounding boxes if available
+        if (data.image_with_bboxes) {
+            imageContainer.innerHTML = `
+                <img src="data:image/jpeg;base64,${data.image_with_bboxes}" 
+                     alt="Image with YOLO bounding boxes">
+            `;
+        }
+
+        if (data.results.length === 0) {
+            html += '<div class="text-result">No text regions detected</div>';
+        } else {
+            data.results.forEach((region, index) => {
+                html += `
+                    <div class="text-result">
+                        <strong>Region ${region.region_id + 1}</strong> 
+                        (YOLO conf: ${(region.yolo_confidence * 100).toFixed(1)}%)<br>
+                        <small>BBox: [${region.yolo_bbox.join(', ')}]</small>
+                    </div>
+                `;
+                
+                if (region.texts.length === 0) {
+                    html += '<div class="text-result" style="margin-left: 20px; color: #666;">No text found in this region</div>';
+                } else {
+                    region.texts.forEach(text => {
+                        html += `
+                            <div class="text-result" style="margin-left: 20px;">
+                                "${text.text}" 
+                                <span class="confidence">(${(text.confidence * 100).toFixed(1)}%)</span>
+                            </div>
+                        `;
+                    });
+                }
+            });
+        }
+        
+        resultsDiv.innerHTML = html;
+    }
+</script>
+
+</body>
+</html> 
