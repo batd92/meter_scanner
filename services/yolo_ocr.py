@@ -15,9 +15,9 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.yolo.yolo_detector import YOLODetector
 from core.onnxocr.onnx_paddleocr import ONNXPaddleOcr
+from helps.preprocess_image import preprocess_region
 from .performance_monitor import performance_monitor, PerformanceMonitor
 
-# Setup logger
 logger = logging.getLogger(__name__)
 
 class YOLOOCRProcessor:
@@ -144,6 +144,7 @@ class YOLOOCRProcessor:
                     if detection.get('class_id') == 'full_image':
                         ocr_result = self.ocr_model.ocr(image)
                     else:
+                        #region = preprocess_region(region)
                         ocr_result = self.ocr_model.ocr(region)
                     region_texts = []
                     for line in ocr_result:
@@ -237,27 +238,21 @@ class YOLOOCRProcessor:
         start_time = time.time()
         
         try:
-            # Start performance monitoring
             perf_monitor = PerformanceMonitor()
             perf_monitor.start_monitoring()
             
-            # Process image
             result = self.process_image_yolo_ocr(image_path)
             
-            # Stop monitoring and get metrics
             perf_monitor.stop_monitoring()
             performance_data = perf_monitor.get_performance_summary()
             
-            # Calculate timing
             total_time = time.time() - start_time
             yolo_time = result.get('yolo_time', 0)
             ocr_time = result.get('ocr_time', 0)
             
-            # Count detections and texts
             detections = len(result.get('regions', []))
             total_texts = sum(len(region.get('texts', [])) for region in result.get('regions', []))
             
-            # Return new efficient format
             response = {
                 'success': True,
                 'processing_time': total_time,
@@ -320,6 +315,6 @@ class YOLOOCRProcessor:
         """Apply production optimizations"""
         self.yolo_detector.model_manager.optimize_for_production()
         
-        performance_monitor.inference_time_threshold = 1.5  # Stricter threshold for production
+        performance_monitor.inference_time_threshold = 1.5
         
-        print("✅ Production optimizations applied to YOLO+OCR processor") 
+        print("✅ Production optimizations applied to YOLO+OCR processor")

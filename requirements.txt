@@ -1,7 +1,7 @@
 flask==2.3.3
 gunicorn
 opencv-python==4.6.0.66
-onnxruntime==1.22.0
+onnxruntime==1.19.2
 requests
 shapely
 pyclipper
@@ -12,7 +12,7 @@ tqdm
 numpy==1.24.3
 pymupdf
 pdf2image
-ultralytics==8.0.196
+ultralytics==8.3.40
 paddlepaddle==2.5.1
 paddleocr==2.7.0.3
 torch==2.0.1

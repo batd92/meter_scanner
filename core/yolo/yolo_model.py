@@ -11,7 +11,6 @@ from typing import Optional, Dict, Any
 from .yolo_config import YOLOConfig
 from .yolo_utils import preprocess_image
 
-# Import ONNX support
 try:
     import onnxruntime as ort
     ONNX_AVAILABLE = True
@@ -37,7 +36,6 @@ class YOLOModelManager:
             True if model loaded successfully
         """
         try:
-            # Check if ONNX should be used
             if self.config.use_onnx and ONNX_AVAILABLE:
                 return self._load_onnx_model()
             else:
@@ -56,15 +54,12 @@ class YOLOModelManager:
                 print("💡 Run: python convert_yolo_to_onnx.py to convert your model")
                 return False
             
-            # Setup providers
             providers = ['CPUExecutionProvider']
             if ort.get_device() == 'GPU':
                 providers = ['CUDAExecutionProvider'] + providers
             
-            # Load ONNX session
             self.onnx_session = ort.InferenceSession(self.config.onnx_path, providers=providers)
             
-            # Get input/output info
             self.input_name = self.onnx_session.get_inputs()[0].name
             self.output_names = [output.name for output in self.onnx_session.get_outputs()]
             
@@ -90,11 +85,9 @@ class YOLOModelManager:
                 print(f"❌ YOLO model not found: {self.config.model_path}")
                 return False
             
-            # Clear GPU memory if needed
             if self.config.device == 'cuda':
                 torch.cuda.empty_cache()
             
-            # Load model with optimizations
             self.model = YOLO(self.config.model_path)
             
             if self.config.device == 'cuda':
@@ -149,15 +142,9 @@ class YOLOModelManager:
     def _infer_onnx(self, img, **kwargs):
         """ONNX inference"""
         try:
-            # Preprocess image for ONNX
             input_tensor = self._preprocess_for_onnx(img)
-            
-            # Run inference
             outputs = self.onnx_session.run(self.output_names, {self.input_name: input_tensor})
-            
-            # Post-process outputs
             results = self._postprocess_onnx_outputs(outputs, img.shape, **kwargs)
-            
             inference_time = time.time() - self._start_time
             self._record_inference_time(inference_time)
             
@@ -195,16 +182,9 @@ class YOLOModelManager:
         import cv2
         import numpy as np
         
-        # Resize image
         resized = cv2.resize(img, self.config.input_size)
-        
-        # Convert BGR to RGB
         rgb = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
-        
-        # Normalize to [0, 1]
         normalized = rgb.astype(np.float32) / 255.0
-        
-        # Transpose to (C, H, W) and add batch dimension
         input_tensor = np.transpose(normalized, (2, 0, 1))
         input_tensor = np.expand_dims(input_tensor, axis=0)
         
@@ -340,7 +320,6 @@ class YOLOModelManager:
         Returns:
             True if reload successful
         """
-        # Cleanup
         if self.model is not None:
             del self.model
             self.model = None

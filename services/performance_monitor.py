@@ -49,8 +49,6 @@ class PerformanceMonitor:
             try:
                 metrics = self.get_current_metrics()
                 self.metrics_history.append(metrics)
-                
-                # Check for performance issues
                 self._check_performance_alerts(metrics)
                 
                 time.sleep(interval)
@@ -146,7 +144,6 @@ class PerformanceMonitor:
         
         self.metrics_history.append(metric)
         
-        # Check inference time threshold
         if inference_time > self.inference_time_threshold:
             print(f"⚠️  Slow inference detected: {service} took {inference_time:.3f}s")
     
@@ -155,17 +152,14 @@ class PerformanceMonitor:
         if not self.metrics_history:
             return {'error': 'No metrics available'}
         
-        # Filter system metrics (exclude inference metrics)
         system_metrics = [m for m in self.metrics_history if 'cpu' in m]
         
         if not system_metrics:
             return {'error': 'No system metrics available'}
         
-        # Calculate averages
         cpu_percentages = [m['cpu']['percent'] for m in system_metrics]
         memory_percentages = [m['memory']['percent'] for m in system_metrics]
         
-        # Filter inference metrics
         inference_metrics = [m for m in self.metrics_history if m.get('type') == 'inference']
         
         return {
@@ -204,24 +198,22 @@ class PerformanceMonitor:
         recommendations = []
         current_metrics = self.get_current_metrics()
         
-        # CPU recommendations
+        # CPU
         cpu_percent = current_metrics.get('cpu', {}).get('percent', 0)
         if cpu_percent > 70:
             recommendations.append("Consider reducing batch size or using GPU acceleration")
         elif cpu_percent < 20:
             recommendations.append("System is underutilized - consider increasing batch size")
         
-        # Memory recommendations
+        # Memory
         memory_percent = current_metrics.get('memory', {}).get('percent', 0)
         if memory_percent > 80:
             recommendations.append("High memory usage - consider enabling memory cleanup")
         
-        # Process memory recommendations
         process_memory = current_metrics.get('memory', {}).get('process_mb', 0)
         if process_memory > 500:
             recommendations.append("High process memory - consider model optimization")
         
         return recommendations
 
-# Global performance monitor instance
 performance_monitor = PerformanceMonitor() 
