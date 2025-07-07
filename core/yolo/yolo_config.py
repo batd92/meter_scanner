@@ -10,6 +10,8 @@ class YOLOConfig:
     def __init__(self):
         # Model settings
         self.model_path = './core/yolo/model/best.pt'
+        self.use_onnx = False  # Enable ONNX for better performance
+        self.onnx_path = './core/yolo/model/best.onnx'
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         
         # Detection thresholds - Optimized for meter detection
@@ -73,6 +75,7 @@ class YOLOConfig:
         """Get optimization configuration summary"""
         return {
             'device': self.device,
+            'use_onnx': self.use_onnx,
             'half_precision': self.enable_half_precision,
             'tensorrt': self.enable_tensorrt,
             'input_size': self.input_size,
